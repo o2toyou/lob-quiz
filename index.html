@@ -71,6 +71,15 @@
   .result .note{font-size:13px;color:var(--muted)}
   .sendstate{font-size:12px;margin-top:12px;color:var(--muted)}
   .err{color:var(--ng-line)}
+
+  .history{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0}
+  .history h2{font-size:14px;color:var(--navy);margin:0 0 8px}
+  .history ul{margin:0;padding-left:0;list-style:none}
+  .history li{font-size:13px;color:var(--ink);padding:4px 0;border-bottom:1px dashed var(--line)}
+  .history li:last-child{border-bottom:none}
+  .history .h-pass{color:var(--teal);font-weight:700}
+  .history .h-fail{color:var(--ng-line);font-weight:700}
+  .history .h-note{font-size:11px;color:var(--muted);margin-top:8px}
 </style>
 </head>
 <body>
@@ -81,6 +90,8 @@
     <div class="meta">全30問　|　合格ライン 70%以上（21問以上正解）　|　単一選択</div>
     <div class="rule"></div>
   </header>
+
+  <div id="historyBox"></div>
 
   <div class="intake">
     <label for="nm">お名前 <span style="color:var(--ng-line)">*</span></label>
@@ -113,6 +124,29 @@ const DATA = [{"n": 1, "q": "The Language of Breath の哲学において、す�
 
 const quizEl=document.getElementById('quiz');
 const answers={};
+
+// ===== 受験履歴（この端末のブラウザに保存） =====
+const STORE_KEY='lob_quiz_history';
+function loadHistory(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||[]}catch(e){return[]}}
+function saveHistory(entry){
+  try{
+    const h=loadHistory(); h.push(entry);
+    localStorage.setItem(STORE_KEY,JSON.stringify(h.slice(-20)));
+  }catch(e){}
+}
+function renderHistory(){
+  const h=loadHistory(); const box=document.getElementById('historyBox');
+  if(!h.length){box.innerHTML='';return;}
+  const rows=h.slice().reverse().map(e=>
+    '<li>'+escapeHtml(e.date)+'　'+e.correct+' / '+e.total+'（'+e.pct+'%）　'
+    +'<span class="'+(e.pass?'h-pass':'h-fail')+'">'+(e.pass?'合格':'不合格')+'</span></li>').join('');
+  box.innerHTML='<div class="history"><h2>受験履歴</h2><ul>'+rows+'</ul>'
+    +'<div class="h-note">※ この端末のブラウザに保存された記録です（最新20件）</div></div>';
+  const last=h[h.length-1];
+  if(last.name&&!document.getElementById('nm').value)document.getElementById('nm').value=last.name;
+  if(last.email&&!document.getElementById('em').value)document.getElementById('em').value=last.email;
+  refreshBtn();
+}
 
 function render(){
   DATA.forEach(item=>{
@@ -193,6 +227,12 @@ function showResult(correct,detail){
     +'<div class="sendstate" id="sendstate">結果を送信しています…</div>'
     +'</div>';
   box.scrollIntoView({behavior:'smooth',block:'center'});
+  saveHistory({
+    date:new Date().toLocaleString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+    name:document.getElementById('nm').value.trim(),
+    email:document.getElementById('em').value.trim(),
+    correct,total,pct,pass
+  });
   document.getElementById('actionbar').innerHTML='<button class="btn-ghost" id="retakeBtn">もう一度受ける</button>';
   document.getElementById('retakeBtn').addEventListener('click',()=>location.reload());
   sendResult(correct,total,pct,pass,detail);
@@ -222,7 +262,7 @@ function sendResult(correct,total,pct,pass,detail){
 function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
 document.getElementById('submitBtn').addEventListener('click',grade);
-render(); updateProgress();
+render(); updateProgress(); renderHistory();
 </script>
 </body>
 </html>
