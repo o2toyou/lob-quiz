@@ -246,16 +246,22 @@ function sendResult(correct,total,pct,pass,detail){
     st.textContent='※ 送信先が未設定です（管理者へ連絡してください）';
     return;
   }
+  const scoreLine=correct+' / '+total+'（'+pct+'%）';
+  const verdictLine=pass?'合格':'不合格（合格ライン70%）';
+  const autoBody=pass
+    ? 'The Language of Breath 修了テストを受験いただきありがとうございました。\n\n結果: '+scoreLine+'\n判定: 合格\n\nおめでとうございます。合格ラインを超えました。\n\n※ 各問題の正解・不正解はテスト画面でご確認いただけます。'
+    : 'The Language of Breath 修了テストを受験いただきありがとうございました。\n\n結果: '+scoreLine+'\n判定: 不合格（合格ライン70%）\n\n今回は合格ラインに届きませんでした。テスト画面で赤く表示された問題を復習のうえ、もう一度挑戦してください。\n（正解は合格時にのみ画面に表示される仕様のため、このメールには記載していません）';
   const payload={
     _subject:'[LoB修了テスト] '+nm+' さん（'+correct+'/'+total+'・'+(pass?'合格':'不合格')+'）',
     _replyto:em,
+    _autoresponse:autoBody,
     お名前:nm, メールアドレス:em,
-    スコア:correct+' / '+total+'（'+pct+'%）',
-    合否:pass?'合格':'不合格（合格ライン70%）',
+    スコア:scoreLine,
+    合否:verdictLine,
     詳細:detail.join('\n')
   };
   fetch(FORMSPREE_ENDPOINT,{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(payload)})
-    .then(r=>{ if(r.ok){st.textContent='✓ 結果を送信しました。ありがとうございました。';}
+    .then(r=>{ if(r.ok){st.textContent='✓ 結果を送信しました。ご入力いただいたメールアドレスにも控えをお送りしました。';}
       else{st.className='sendstate err';st.textContent='※ 送信に失敗しました。スクリーンショットをご送付ください。';} })
     .catch(()=>{ st.className='sendstate err';st.textContent='※ 送信に失敗しました。スクリーンショットをご送付ください。'; });
 }
