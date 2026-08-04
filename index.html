@@ -80,6 +80,13 @@
   .history .h-pass{color:var(--teal);font-weight:700}
   .history .h-fail{color:var(--ng-line);font-weight:700}
   .history .h-note{font-size:11px;color:var(--muted);margin-top:8px}
+
+  @media print{
+    .actionbar,.progress,.history,.intake{display:none!important}
+    body{background:#fff}
+    .result{box-shadow:none;border:1.5px solid #999}
+    .q{break-inside:avoid}
+  }
 </style>
 </head>
 <body>
@@ -217,8 +224,11 @@ function grade(){
 }
 function showResult(correct,detail){
   const total=DATA.length, pct=Math.round(correct/total*100), pass=pct>=70;
+  const nm=document.getElementById('nm').value.trim();
+  const dateStr=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'2-digit',day:'2-digit'});
   const box=document.getElementById('resultBox');
   box.innerHTML='<div class="result">'
+    +'<div class="pct">'+escapeHtml(nm)+' さん　'+dateStr+' 受験</div>'
     +'<div class="pct">スコア</div>'
     +'<div class="score" style="color:'+(pass?'var(--teal)':'var(--ng-line)')+'">'+correct+'<span style="font-size:22px;color:var(--muted)"> / '+total+'</span></div>'
     +'<div class="pct">'+pct+'%</div>'
@@ -233,7 +243,10 @@ function showResult(correct,detail){
     email:document.getElementById('em').value.trim(),
     correct,total,pct,pass
   });
-  document.getElementById('actionbar').innerHTML='<button class="btn-ghost" id="retakeBtn">もう一度受ける</button>';
+  document.getElementById('actionbar').innerHTML=
+    '<button class="btn-ghost" id="saveBtn">結果を保存（PDF/印刷）</button>'
+    +'<button class="btn-ghost" id="retakeBtn">もう一度受ける</button>';
+  document.getElementById('saveBtn').addEventListener('click',()=>window.print());
   document.getElementById('retakeBtn').addEventListener('click',()=>location.reload());
   sendResult(correct,total,pct,pass,detail);
 }
@@ -248,20 +261,16 @@ function sendResult(correct,total,pct,pass,detail){
   }
   const scoreLine=correct+' / '+total+'（'+pct+'%）';
   const verdictLine=pass?'合格':'不合格（合格ライン70%）';
-  const autoBody=pass
-    ? 'The Language of Breath 修了テストを受験いただきありがとうございました。\n\n結果: '+scoreLine+'\n判定: 合格\n\nおめでとうございます。合格ラインを超えました。\n\n※ 各問題の正解・不正解はテスト画面でご確認いただけます。'
-    : 'The Language of Breath 修了テストを受験いただきありがとうございました。\n\n結果: '+scoreLine+'\n判定: 不合格（合格ライン70%）\n\n今回は合格ラインに届きませんでした。テスト画面で赤く表示された問題を復習のうえ、もう一度挑戦してください。\n（正解は合格時にのみ画面に表示される仕様のため、このメールには記載していません）';
   const payload={
     _subject:'[LoB修了テスト] '+nm+' さん（'+correct+'/'+total+'・'+(pass?'合格':'不合格')+'）',
     _replyto:em,
-    _autoresponse:autoBody,
     お名前:nm, メールアドレス:em,
     スコア:scoreLine,
     合否:verdictLine,
     詳細:detail.join('\n')
   };
   fetch(FORMSPREE_ENDPOINT,{method:'POST',headers:{'Accept':'application/json','Content-Type':'application/json'},body:JSON.stringify(payload)})
-    .then(r=>{ if(r.ok){st.textContent='✓ 結果を送信しました。ご入力いただいたメールアドレスにも控えをお送りしました。';}
+    .then(r=>{ if(r.ok){st.textContent='✓ 結果を送信しました。ありがとうございました。';}
       else{st.className='sendstate err';st.textContent='※ 送信に失敗しました。スクリーンショットをご送付ください。';} })
     .catch(()=>{ st.className='sendstate err';st.textContent='※ 送信に失敗しました。スクリーンショットをご送付ください。'; });
 }
