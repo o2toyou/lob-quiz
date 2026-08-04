@@ -152,20 +152,31 @@ document.getElementById('nm').addEventListener('input',refreshBtn);
 document.getElementById('em').addEventListener('input',refreshBtn);
 
 function grade(){
-  let correct=0; const detail=[];
+  let correct=0; const detail=[]; const marks=[];
   DATA.forEach(item=>{
-    const qEl=document.getElementById('q'+item.n);
-    qEl.classList.add('graded');
     const chosen=answers[item.n];
     const correctIdx=item.opts.findIndex(o=>o.c);
     const isRight=chosen===correctIdx;
     if(isRight)correct++;
     detail.push('Q'+item.n+': '+(isRight?'正':'誤')+' / 回答: '+item.opts[chosen].t);
+    marks.push({n:item.n,chosen,correctIdx,isRight});
+  });
+  const pass=Math.round(correct/DATA.length*100)>=70;
+  marks.forEach(m=>{
+    const qEl=document.getElementById('q'+m.n);
+    qEl.classList.add('graded');
     [...qEl.querySelectorAll('.opt')].forEach(o=>{
       o.classList.remove('sel');
       const idx=+o.dataset.i;
-      if(idx===correctIdx){o.classList.add('correct');o.querySelector('.lbl').insertAdjacentHTML('beforeend','<span class="tag ok">正解</span>');}
-      else if(idx===chosen){o.classList.add('wrong');o.querySelector('.lbl').insertAdjacentHTML('beforeend','<span class="tag ng">あなたの回答</span>');}
+      if(pass){
+        // 合格時のみ正解を開示する
+        if(idx===m.correctIdx){o.classList.add('correct');o.querySelector('.lbl').insertAdjacentHTML('beforeend','<span class="tag ok">正解</span>');}
+        else if(idx===m.chosen){o.classList.add('wrong');o.querySelector('.lbl').insertAdjacentHTML('beforeend','<span class="tag ng">あなたの回答</span>');}
+      }else{
+        if(idx!==m.chosen)return;
+        if(m.isRight){o.classList.add('correct');o.querySelector('.lbl').insertAdjacentHTML('beforeend','<span class="tag ok">正解</span>');}
+        else{o.classList.add('wrong');o.querySelector('.lbl').insertAdjacentHTML('beforeend','<span class="tag ng">不正解</span>');}
+      }
     });
   });
   showResult(correct,detail);
@@ -178,7 +189,7 @@ function showResult(correct,detail){
     +'<div class="score" style="color:'+(pass?'var(--teal)':'var(--ng-line)')+'">'+correct+'<span style="font-size:22px;color:var(--muted)"> / '+total+'</span></div>'
     +'<div class="pct">'+pct+'%</div>'
     +'<div class="verdict '+(pass?'pass':'fail')+'">'+(pass?'合格です':'あと一歩')+'</div>'
-    +'<div class="note">'+(pass?'おめでとうございます。合格ラインを超えました。':'合格ラインは70%（21問）です。復習してもう一度挑戦しましょう。')+'</div>'
+    +'<div class="note">'+(pass?'おめでとうございます。合格ラインを超えました。':'合格ラインは70%（21問）です。赤く表示された問題を復習して、もう一度挑戦しましょう。（正解は合格時に表示されます）')+'</div>'
     +'<div class="sendstate" id="sendstate">結果を送信しています…</div>'
     +'</div>';
   box.scrollIntoView({behavior:'smooth',block:'center'});
@@ -197,6 +208,7 @@ function sendResult(correct,total,pct,pass,detail){
   }
   const payload={
     _subject:'[LoB修了テスト] '+nm+' さん（'+correct+'/'+total+'・'+(pass?'合格':'不合格')+'）',
+    _replyto:em,
     お名前:nm, メールアドレス:em,
     スコア:correct+' / '+total+'（'+pct+'%）',
     合否:pass?'合格':'不合格（合格ライン70%）',
